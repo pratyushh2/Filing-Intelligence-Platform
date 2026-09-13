@@ -1,108 +1,59 @@
-# 📄 SEC EDGAR Filing Intelligence Platform
+# SEC EDGAR Filing Intelligence Platform
 
-> **Turn lengthy SEC 10-K filings into searchable, grounded intelligence.**
+This project is an AI-powered SEC EDGAR 10-K Filing Intelligence Platform. It extracts important sections from 10-K filings (Risk Factors and Legal Proceedings), stores them using local embeddings in ChromaDB, and uses a Retrieval-Augmented Generation (RAG) architecture powered by Groq to answer complex natural language questions, compare year-over-year risks, and scan for litigation across companies.
+Features
 
-An AI-powered platform for analyzing SEC 10-K filings. It extracts high-value sections such as **Risk Factors (Item 1A)** and **Legal Proceedings (Item 3)**, generates local embeddings, and uses a **Retrieval-Augmented Generation (RAG)** pipeline powered by Groq to answer natural-language questions, compare year-over-year risks, and scan for litigation across companies — all grounded in the actual filing text.
-
-## ✨ Features
-
-- 🔎 **Natural Language Q&A** — Ask company-specific questions answered from 10-K filings.
-- ⚠️ **Year-over-Year Risk Comparison** — Compare Risk Factors across filing years to identify emerging or changing risks.
-- ⚖️ **Cross-Company Litigation Scan** — Search Legal Proceedings (Item 3) across indexed companies.
-- 📚 **Evidence-Grounded Answers** — Responses are generated from retrieved filing text with source references.
-- 🏢 **Multi-Company Analysis** — Query filings across a centralized ChromaDB index.
-- 💬 **Interactive Web Interface** — React-based frontend for exploring companies and filing insights.
-
-## 🧠 Architecture
-
-```text
-                    SEC EDGAR
-                        │
-                        ▼
-              Filing Extraction
-            (BeautifulSoup / lxml)
-                        │
-                        ▼
-              Section Parser
-              ┌─────────┴─────────┐
-              ▼                   ▼
-        Item 1A Risk         Item 3 Legal
-           Factors           Proceedings
-              │                   │
-              └─────────┬─────────┘
-                        ▼
-               Chunking + Embeddings
-             (all-MiniLM-L6-v2)
-                        │
-                        ▼
-                   ChromaDB
-               Persistent Vector Store
-                        │
-                        ▼
-                Semantic Retrieval
-                        │
-                        ▼
-                  Groq LLM
-             (openai/gpt-oss-20b)
-                        │
-                        ▼
-                FastAPI Backend
-              /ask /diff /litigation
-                        │
-                        ▼
-              React + TypeScript UI
+* Natural Language Q&A: Ask company-specific questions based purely on their 10-K filings.
+* Year-over-Year Risk Factor Comparison: Diff risk factors across years for the same company to track emerging risks.
+* Cross-Company Litigation Scan: Search across all ingested companies' Legal Proceedings (Item 3) sections.
+* Evidence-Grounded: All responses are based strictly on the retrieved filings and cite their sources.
 
 🛠️ Tech Stack
-Layer	Technologies
-🎨 Frontend	React, TypeScript, Vite, Tailwind CSS
-⚡ Backend	Python, FastAPI, Uvicorn
-📥 Ingestion	SEC EDGAR, Requests, BeautifulSoup, lxml
-🧮 Embeddings	Sentence Transformers (all-MiniLM-L6-v2)
-🗄️ Vector Store	ChromaDB
-🤖 LLM	Groq (openai/gpt-oss-20b)
+| Layer            | Technologies                               |
+| ---------------- | ------------------------------------------ |
+| 🎨 Frontend      | React, TypeScript, Vite, Tailwind CSS      |
+| ⚡ Backend        | Python, FastAPI, Uvicorn                   |
+| 📥 Ingestion     | SEC EDGAR, Requests, BeautifulSoup, lxml   |
+| 🧮 Embeddings    | Sentence Transformers (`all-MiniLM-L6-v2`) |
+| 🗄️ Vector Store | ChromaDB                                   |
+| 🤖 LLM           | Groq (`openai/gpt-oss-20b`)                |
 
-🚀 Quickstart
-1. Clone the repository
-git clone https://github.com/pratyushh2/Filing-Intelligence-Platform.git
-cd Filing-Intelligence-Platform
-2. Backend
+
+Setup Instructions
+
+1. Clone the repository.
+2. Create a virtual environment and install dependencies:
+
+```
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS / Linux
-source venv/bin/activate
-
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install -r requirements.txt
+```
 
-Create .env from .env.example and add your Groq API key.
+3. Set up Environment Variables: Copy `.env.example` to `.env` and fill in your Groq API key.
 
+```
 cp .env.example .env
+```
 
-Start the API:
+4. Run the API server:
 
+```
 uvicorn app.main:app --reload
+```
 
-API: http://localhost:8000
+5. Access the API Documentation: Visit `http://localhost:8000/docs` to see the interactive Swagger UI and test the endpoints.
 
-Swagger UI: http://localhost:8000/docs
+API Endpoints
 
-3. Frontend
-cd frontend
-npm install
-npm run dev
+| Method | Endpoint      | Description                           |
+| ------ | ------------- | ------------------------------------- |
+| `GET`  | `/health`     | ❤️ System health                      |
+| `GET`  | `/companies`  | 🏢 Indexed companies and filing years |
+| `POST` | `/ask`        | 🔎 Filing Q&A                         |
+| `POST` | `/diff`       | 🔄 Compare risk factors               |
+| `POST` | `/litigation` | ⚖️ Cross-company litigation scan      |
 
-Configure the backend URL in the frontend environment:
-
-VITE_API_BASE_URL=http://127.0.0.1:8000
-🔌 API
-Method	Endpoint	Description
-GET	/health	❤️ System health
-GET	/companies	🏢 Indexed companies and filing years
-POST	/ask	🔎 Filing Q&A
-POST	/diff	🔄 Compare risk factors
-POST	/litigation	⚖️ Cross-company litigation scan
 Example — /ask
 {
   "ticker": "NVDA",
@@ -131,7 +82,11 @@ ChromaDB is currently configured as a persistent local vector store.
  Improve citation granularity with direct filing locations
  Configurable embedding models
  Production-ready managed vector storage
-
+ 
 📜 License
 
 This project is intended for educational and portfolio use.
+
+
+* The SEC filing extractor uses heuristic regex parsing for HTML. Certain edge cases in highly custom SEC filings might fail extraction.
+* To prevent huge context limits, Year-over-Year diffs use a chunked map-reduce summarization strategy.
