@@ -1,11 +1,6 @@
-/**
- * Centralized API integration layer connecting the frontend to the FastAPI backend.
- * SEC, Groq, ChromaDB and embeddings are handled entirely server-side.
- */
 import type { Company } from "./companies";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+export const API_BASE_URL = import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:8000";
 
 export type Source = {
   ticker: string;
@@ -13,9 +8,6 @@ export type Source = {
   section: string;
   text: string;
   source_url?: string | null;
-  /** UI compatibility aliases */
-  year?: string | number;
-  item?: string;
 };
 
 export type AskRequest = {
@@ -29,16 +21,16 @@ export type AskResponse = {
   sources: Source[];
 };
 
+export type DiffChange = {
+  type: string; // "added" | "removed" | "changed"
+  topic: string;
+  description: string;
+};
+
 export type DiffRequest = {
   ticker: string;
   year1: string;
   year2: string;
-};
-
-export type DiffChange = {
-  type: string;
-  topic: string;
-  description: string;
 };
 
 export type DiffResponse = {
@@ -50,15 +42,15 @@ export type DiffResponse = {
   sources: Source[];
 };
 
-export type LitigationRequest = {
-  query: string;
-};
-
 export type LitigationMatch = {
   ticker: string;
   fiscal_year: string;
   section: string;
   text: string;
+};
+
+export type LitigationRequest = {
+  query: string;
 };
 
 export type LitigationResponse = {
@@ -72,117 +64,119 @@ export type HealthResponse = {
   groq_configured: boolean;
 };
 
-/** GET /health */
-export async function getHealth(): Promise<HealthResponse> {
+export async function health(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE_URL}/health`);
   if (!res.ok) {
-    throw new Error(`Health check failed with status ${res.status}`);
+    throw new Error(`Health check failed: HTTP ${res.status}`);
   }
-  return (await res.json()) as HealthResponse;
+  return res.json();
 }
 
-/** GET /companies */
 export async function getCompanies(): Promise<Company[]> {
   const res = await fetch(`${API_BASE_URL}/companies`);
   if (!res.ok) {
-    throw new Error(`Failed to load companies (status ${res.status})`);
+    throw new Error(`Failed to load companies: HTTP ${res.status}`);
   }
-  const data = (await res.json()) as Company[];
-  return data;
+  return res.json();
 }
 
-/** POST /ask */
-export async function ask({ ticker, text }: AskRequest): Promise<AskResponse> {
+export async function ask(req: AskRequest): Promise<AskResponse> {
+  const normalized = req.text.trim().toLowerCase().replace(/^[\s.,!?;:'"“”]+|[\s.,!?;:'"“”]+$/g, "");
+  const tickerUpper = req.ticker.trim().toUpperCase();
+
+  const greetings = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "greetings",
+    "howdy",
+  ]);
+
+  const helpQueries = new Set([
+    "what type of questions can i ask",
+    "what can i ask",
+    "what questions can i ask",
+    "help",
+    "what can you do",
+    "how does this work",
+    "how do i use this",
+    "what do you do",
+  ]);
+
+  if (greetings.has(normalized)) {
+    return {
+      answer: "Hi! I'm Filing Intelligence. Ask me about a company's SEC filings, risks, legal proceedings, or changes between filings.",
+      ticker: tickerUpper,
+      sources: [],
+    };
+  }
+
+  if (helpQueries.has(normalized)) {
+    return {
+      answer: `I can help you analyze SEC filings and uncover insights. Here are some examples of what you can ask:\n\n- What are ${tickerUpper}'s biggest business risks?\n- What cybersecurity risks does ${tickerUpper} disclose?\n- What does ${tickerUpper} say about its supply chain?\n- How have the legal proceedings changed since last year?`,
+      ticker: tickerUpper,
+      sources: [],
+    };
+  }
+
   const res = await fetch(`${API_BASE_URL}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      ticker: ticker.trim().toUpperCase(),
-      text: text.trim(),
+      ticker: tickerUpper,
+      text: req.text.trim(),
     }),
   });
-
   if (!res.ok) {
-    let detail = `Request failed (${res.status})`;
+    let detail = "";
     try {
       const err = await res.json();
-      if (err?.detail) {
-        detail = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
-      }
+      detail = err.detail || "";
     } catch {
-      // fallback to status text
+      // ignore
     }
-    throw new Error(detail);
+    throw new Error(detail || `Request failed with HTTP ${res.status}`);
   }
-
-  const data = (await res.json()) as { answer: string; ticker: string; sources: Source[] };
-  const normalizedSources: Source[] = (data.sources || []).map((s) => ({
-    ticker: s.ticker,
-    fiscal_year: s.fiscal_year,
-    section: s.section,
-    text: s.text,
-    source_url: s.source_url ?? null,
-    year: s.fiscal_year,
-    item: s.section,
-  }));
-
-  return {
-    answer: data.answer,
-    ticker: data.ticker,
-    sources: normalizedSources,
-  };
+  return res.json();
 }
 
-/** POST /diff */
 export async function diff(req: DiffRequest): Promise<DiffResponse> {
   const res = await fetch(`${API_BASE_URL}/diff`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ticker: req.ticker.trim().toUpperCase(),
-      year1: String(req.year1).trim(),
-      year2: String(req.year2).trim(),
-    }),
+    body: JSON.stringify(req),
   });
-
   if (!res.ok) {
-    let detail = `Diff request failed (${res.status})`;
+    let detail = "";
     try {
       const err = await res.json();
-      if (err?.detail) {
-        detail = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
-      }
+      detail = err.detail || "";
     } catch {
-      // fallback to status
+      // ignore
     }
-    throw new Error(detail);
+    throw new Error(detail || `Risk diff request failed with HTTP ${res.status}`);
   }
-
-  return (await res.json()) as DiffResponse;
+  return res.json();
 }
 
-/** POST /litigation */
-export async function scanLitigation(req: LitigationRequest): Promise<LitigationResponse> {
+export async function litigation(req: LitigationRequest): Promise<LitigationResponse> {
   const res = await fetch(`${API_BASE_URL}/litigation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: req.query.trim(),
-    }),
+    body: JSON.stringify(req),
   });
-
   if (!res.ok) {
-    let detail = `Litigation scan failed (${res.status})`;
+    let detail = "";
     try {
       const err = await res.json();
-      if (err?.detail) {
-        detail = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
-      }
+      detail = err.detail || "";
     } catch {
-      // fallback to status
+      // ignore
     }
-    throw new Error(detail);
+    throw new Error(detail || `Litigation search failed with HTTP ${res.status}`);
   }
-
-  return (await res.json()) as LitigationResponse;
+  return res.json();
 }
