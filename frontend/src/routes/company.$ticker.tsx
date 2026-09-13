@@ -37,7 +37,7 @@ const focus = [
 function CompanyPage() {
   const { ticker } = Route.useParams();
   const upperTicker = ticker.toUpperCase();
-  const { data: companies, isLoading } = useCompanies();
+  const { data: companies, isLoading, isError, error } = useCompanies();
   const company = companies?.find((c) => c.ticker.toUpperCase() === upperTicker);
 
   return (
@@ -49,12 +49,25 @@ function CompanyPage() {
           {isLoading ? (
             <div>
               <p className="label-mono">Loading</p>
-              <h1 className="mt-6 text-3xl tracking-[-0.02em]">Retrieving filing records for “{upperTicker}”…</h1>
+              <h1 className="mt-6 text-3xl tracking-[-0.02em]">Retrieving filing records for "{upperTicker}"…</h1>
+            </div>
+          ) : isError ? (
+            <div>
+              <p className="label-mono">API Error</p>
+              <h1 className="mt-6 text-3xl tracking-[-0.02em]">Failed to load companies</h1>
+              <p className="mt-4 max-w-md text-muted-foreground">
+                {error instanceof Error
+                  ? error.message
+                  : "Could not reach the backend. Make sure the FastAPI server is running on http://127.0.0.1:8000"}
+              </p>
+              <Link to="/" className="hover-arrow mt-8 inline-flex items-center gap-2 text-sm text-foreground">
+                Back to search <span className="arrow font-mono text-signal">→</span>
+              </Link>
             </div>
           ) : !company ? (
             <div>
               <p className="label-mono">Not tracked</p>
-              <h1 className="mt-6 text-3xl tracking-[-0.02em]">No filings for “{upperTicker}”</h1>
+              <h1 className="mt-6 text-3xl tracking-[-0.02em]">No filings for "{upperTicker}"</h1>
               <p className="mt-4 max-w-md text-muted-foreground">
                 This company is not currently indexed in the SEC filing database.
               </p>
