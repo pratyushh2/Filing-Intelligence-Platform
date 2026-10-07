@@ -1,0 +1,77 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "fastapi"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "tanstack-start-lovable",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "app",
+          "format": "url",
+          "env": "API_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/companies",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/ask",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/diff",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/litigation",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/docs(.*)",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/openapi.json",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}

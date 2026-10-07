@@ -1,6 +1,21 @@
-import type { Company } from "./companies";
+export function getApiBaseUrl(): string {
+  // In server environments (SSR / Server Functions), Vercel service bindings inject API_URL
+  if (typeof process !== "undefined" && process.env?.API_URL) {
+    return process.env.API_URL.replace(/\/$/, "");
+  }
+  // Client-side Vite environment variable if explicitly configured
+  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "");
+  }
+  // Browser runtime on same origin
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  // Fallback for local development
+  return "http://localhost:8000";
+}
 
-export const API_BASE_URL = import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:8000";
+export const API_BASE_URL = getApiBaseUrl();
 
 export type Source = {
   ticker: string;
@@ -65,7 +80,7 @@ export type HealthResponse = {
 };
 
 export async function health(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE_URL}/health`);
+  const res = await fetch(`${getApiBaseUrl()}/health`);
   if (!res.ok) {
     throw new Error(`Health check failed: HTTP ${res.status}`);
   }
@@ -73,7 +88,7 @@ export async function health(): Promise<HealthResponse> {
 }
 
 export async function getCompanies(): Promise<Company[]> {
-  const res = await fetch(`${API_BASE_URL}/companies`);
+  const res = await fetch(`${getApiBaseUrl()}/companies`);
   if (!res.ok) {
     throw new Error(`Failed to load companies: HTTP ${res.status}`);
   }
@@ -122,7 +137,7 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
     };
   }
 
-  const res = await fetch(`${API_BASE_URL}/ask`, {
+  const res = await fetch(`${getApiBaseUrl()}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -144,7 +159,7 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
 }
 
 export async function diff(req: DiffRequest): Promise<DiffResponse> {
-  const res = await fetch(`${API_BASE_URL}/diff`, {
+  const res = await fetch(`${getApiBaseUrl()}/diff`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -163,7 +178,7 @@ export async function diff(req: DiffRequest): Promise<DiffResponse> {
 }
 
 export async function litigation(req: LitigationRequest): Promise<LitigationResponse> {
-  const res = await fetch(`${API_BASE_URL}/litigation`, {
+  const res = await fetch(`${getApiBaseUrl()}/litigation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
